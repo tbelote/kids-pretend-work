@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkHub Pro</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    color: #d6e2ee;
+    cursor: default;
+  }
+
+  /* ---------- top bar ---------- */
+  #topbar {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    background: rgba(10, 18, 26, 0.85);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+  }
+  .dot { width: 13px; height: 13px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  #appname { font-weight: 700; font-size: 15px; margin-left: 6px; color: #7fd4ff; }
+  #project { margin: 0 auto; font-size: 13px; color: #9db4c8; background: rgba(255,255,255,0.06);
+             padding: 4px 14px; border-radius: 12px; transition: all .4s; }
+  #project.flash { background: rgba(127,212,255,0.25); color: #fff; }
+  #topright { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #9db4c8; }
+  #mailbadge { background: #ff5f57; color: #fff; border-radius: 10px; padding: 1px 8px;
+               font-size: 12px; font-weight: 700; }
+  #clock { font-variant-numeric: tabular-nums; }
+
+  /* ---------- window grid ---------- */
+  #grid {
+    height: calc(100% - 42px);
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    grid-template-rows: 1.25fr 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  .win {
+    background: rgba(13, 22, 32, 0.92);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .win.pulse { border-color: rgba(127,212,255,0.5); }
+  .winhead {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.045);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-size: 12.5px; color: #8fb3cc;
+  }
+  .winhead .icon { font-size: 14px; }
+  .winhead .spacer { flex: 1; }
+  .winbody { flex: 1; overflow: hidden; position: relative; }
+
+  /* ---------- code editor ---------- */
+  #editor { padding: 12px 0; font-size: 15.5px; line-height: 1.55; height: 100%; overflow: hidden; }
+  .cline { display: flex; white-space: pre; }
+  .ln { width: 52px; flex: none; text-align: right; padding-right: 14px; color: #3d556b; }
+  .kw { color: #c792ea; } .str { color: #c3e88d; } .num { color: #f78c6c; }
+  .com { color: #546e7a; font-style: italic; } .fn { color: #82aaff; } .op { color: #89ddff; }
+  #cursor {
+    display: inline-block; width: 9px; height: 1.15em;
+    background: #7fd4ff; vertical-align: text-bottom;
+    animation: blink 0.9s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ---------- terminal ---------- */
+  #term { padding: 10px 14px; font-size: 14.5px; line-height: 1.5; height: 100%; overflow: hidden; }
+  .t-ok { color: #5be49b; } .t-info { color: #7fd4ff; } .t-warn { color: #ffd166; }
+  .t-cmd { color: #fff; font-weight: 700; } .t-dim { color: #7d93a8; } .t-err { color: #ff7a85; }
+
+  /* ---------- dashboard ---------- */
+  #dash { padding: 10px 14px; height: 100%; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  #kpis { display: flex; gap: 10px; }
+  .kpi {
+    flex: 1; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .kpi .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: #7d93a8; }
+  .kpi .value { font-size: 21px; font-weight: 800; margin-top: 2px; }
+  .kpi .delta { font-size: 10.5px; color: #5be49b; }
+  #chart { flex: 1; width: 100%; min-height: 0; }
+  .pbar-row { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: #9db4c8; flex: none; }
+  .pbar-row .pname { width: 100px; flex: none; }
+  .pbar { flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; }
+  .pbar > div { height: 100%; border-radius: 5px; width: 0%; transition: width .5s ease; }
+  .pct { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- chat ---------- */
+  #chat { padding: 10px 14px; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+  .msg { display: flex; gap: 10px; animation: slidein .35s ease; }
+  @keyframes slidein { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .avatar {
+    width: 34px; height: 34px; flex: none; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; color: #0d1620;
+  }
+  .msg .who { font-weight: 700; font-size: 12.5px; }
+  .msg .when { color: #5f7488; font-weight: 400; font-size: 11px; margin-left: 6px; }
+  .msg .text { color: #c4d6e6; margin-top: 1px; line-height: 1.4; }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 10px; z-index: 50; }
+  .toast {
+    background: rgba(16, 28, 40, 0.97);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-left: 4px solid #5be49b;
+    border-radius: 10px; padding: 12px 16px; min-width: 280px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    animation: toastin .3s ease; font-size: 13.5px;
+  }
+  .toast .tt { font-weight: 700; margin-bottom: 2px; }
+  .toast .tb { color: #9db4c8; font-size: 12.5px; }
+  .toast.out { transition: all .4s; opacity: 0; transform: translateX(40px); }
+  @keyframes toastin { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  #hint {
+    position: fixed; left: 16px; bottom: 12px; font-size: 11px; color: rgba(255,255,255,0.28); z-index: 40;
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+  <span id="appname">WorkHub Pro</span>
+  <span id="project">Project Phoenix — sprint board</span>
+  <div id="topright">
+    <span>📨 <span id="mailbadge">3</span></span>
+    <span>📶</span>
+    <span id="clock">09:41</span>
+  </div>
+</div>
+
+<div id="grid">
+  <div class="win" id="w-editor">
+    <div class="winhead"><span class="icon">📝</span> Code Editor <span class="spacer"></span><span id="filename">pipeline.js</span></div>
+    <div class="winbody"><div id="editor"></div></div>
+  </div>
+  <div class="win" id="w-term">
+    <div class="winhead"><span class="icon">💻</span> Terminal — build server</div>
+    <div class="winbody"><div id="term"></div></div>
+  </div>
+  <div class="win" id="w-dash">
+    <div class="winhead"><span class="icon">📊</span> Analytics Dashboard <span class="spacer"></span><span style="color:#5be49b">● live</span></div>
+    <div class="winbody">
+      <div id="dash">
+        <div id="kpis"></div>
+        <canvas id="chart"></canvas>
+        <div id="pbars"></div>
+      </div>
+    </div>
+  </div>
+  <div class="win" id="w-chat">
+    <div class="winhead"><span class="icon">💬</span> Team Chat — #engineering <span class="spacer"></span><span style="color:#5be49b">4 online</span></div>
+    <div class="winbody"><div id="chat"></div></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="hint">WorkHub Pro v4.2 — connected to office VPN</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const pick = arr => arr[rnd(0, arr.length - 1)];
+const chance = p => Math.random() < p;
+
+/* ================= sound ================= */
+let actx = null;
+function click() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = "square";
+    o.frequency.value = rnd(900, 2400);
+    g.gain.setValueAtTime(0.025, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.05);
+    o.connect(g).connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + 0.06);
+  } catch (e) {}
+}
+
+/* ================= clock ================= */
+function tickClock() {
+  const d = new Date();
+  $("#clock").textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+tickClock(); setInterval(tickClock, 5000);
+
+/* ================= code editor ================= */
+const FILES = ["pipeline.js", "server.py", "dashboard.ts", "api_client.js", "reports.py"];
+const CODE = [
+  "import { fetchMetrics } from './api';",
+  "const MAX_RETRIES = 5;",
+  "",
+  "async function buildReport(userId) {",
+  "  const data = await fetchMetrics(userId);",
+  "  if (!data.ok) throw new Error('fetch failed');",
+  "  return transform(data.rows);",
+  "}",
+  "",
+  "function transform(rows) {",
+  "  return rows.map(r => ({",
+  "    name: r.label.trim(),",
+  "    value: Math.round(r.total * 1.08),",
+  "    trend: r.total > r.prev ? 'up' : 'down',",
+  "  }));",
+  "}",
+  "",
+  "// cache results for 5 minutes",
+  "const cache = new Map();",
+  "",
+  "export async function run() {",
+  "  const t0 = performance.now();",
+  "  const report = await buildReport(42);",
+  "  console.log(`done in ${performance.now() - t0}ms`);",
+  "  return report;",
+  "}",
+  "",
+  "def calculate_quarterly_growth(sales):",
+  "    total = sum(sales.values())",
+  "    average = total / len(sales)",
+  "    return round(average * 1.12, 2)",
+  "",
+  "class ReportBuilder:",
+  "    def __init__(self, config):",
+  "        self.config = config",
+  "        self.charts = []",
+  "",
+  "    def add_chart(self, chart):",
+  "        self.charts.append(chart)",
+  "",
+  "    def render(self):",
+  "        return [c.to_html() for c in self.charts]",
+  "",
+  "const server = createServer((req, res) => {",
+  "  const route = router.match(req.url);",
+  "  if (!route) return res.send(404);",
+  "  route.handler(req, res);",
+  "});",
+  "server.listen(8080, () => log('ready'));",
+  "",
+  "SELECT region, SUM(revenue) AS total",
+  "FROM sales WHERE quarter = 'Q3'",
+  "GROUP BY region ORDER BY total DESC;",
+  "",
+  "function deployToCloud(app) {",
+  "  const bundle = webpack.build(app);",
+  "  return cloud.upload(bundle, { region: 'eu-west' });",
+  "}",
+];
+let codeIdx = 0, charIdx = 0, lineNo = 1;
+const editor = $("#editor");
+
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function highlight(line) {
+  const h = esc(line);
+  if (/^\s*(\/\/|#)/.test(line)) return `<span class="com">${h}</span>`;
+  const hlCode = s => s
+    .replace(/\b(const|let|var|function|return|if|else|for|while|import|from|export|async|await|new|class|def|self|throw|SELECT|FROM|WHERE|GROUP|BY|ORDER|DESC|AS|SUM)\b/g, '<span class="kw">$1</span>')
+    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>')
+    .replace(/\b([a-zA-Z_]\w*)(?=\()/g, '<span class="fn">$1</span>');
+  // split out string literals first so highlighting never touches span markup
+  return h.split(/('[^']*'|"[^"]*"|`[^`]*`)/g)
+    .map((part, i) => i % 2 === 1 ? `<span class="str">${part}</span>` : hlCode(part))
+    .join("");
+}
+
+// current (being typed) line element
+let curText = null, curLineEl = null;
+function newEditorLine() {
+  const div = document.createElement("div");
+  div.className = "cline";
+  div.innerHTML = `<span class="ln">${lineNo}</span><span class="code"></span>`;
+  editor.appendChild(div);
+  curLineEl = div;
+  curText = "";
+  lineNo++;
+  trimEditor();
+}
+function trimEditor() {
+  while (editor.children.length > 24) editor.removeChild(editor.firstChild);
+}
+function typeChars(n) {
+  for (let i = 0; i < n; i++) {
+    const line = CODE[codeIdx];
+    if (charIdx === 0 && !curLineEl) newEditorLine();
+    if (line === "") { finishLine(); continue; }
+    curText = line.slice(0, ++charIdx);
+    curLineEl.querySelector(".code").innerHTML =
+      esc(curText) + '<span id="cursor"></span>';
+    if (charIdx >= line.length) finishLine();
+  }
+  function finishLine() {
+    if (curLineEl) curLineEl.querySelector(".code").innerHTML = highlight(CODE[codeIdx]) || "&nbsp;";
+    curLineEl = null; curText = null;
+    codeIdx = (codeIdx + 1) % CODE.length;
+    charIdx = 0;
+    if (codeIdx === 0 && chance(0.5)) {
+      $("#filename").textContent = pick(FILES);
+      flashWindow("#w-editor");
+    }
+  }
+}
+newEditorLine();
+
+/* ================= terminal ================= */
+const term = $("#term");
+const CMDS = ["npm run build", "git push origin main", "docker compose up -d", "npm test -- --coverage",
+  "python manage.py migrate", "kubectl rollout status deploy/web", "aws s3 sync ./dist s3://cdn-workhub"];
+const LOGS = [
+  ["t-dim", "[build] compiling modules…"],
+  ["t-info", "[build] bundling src/ → dist/ ({} files)"],
+  ["t-ok",  "[build] ✓ compiled successfully in {}.{}s"],
+  ["t-dim", "[test] running unit tests…"],
+  ["t-ok",  "[test] ✓ {} passed, 0 failed"],
+  ["t-info","[docker] pulling image workhub/api:latest"],
+  ["t-ok",  "[docker] ✓ container healthy (port 8080)"],
+  ["t-warn","[lint] 2 warnings in reports.py"],
+  ["t-info","[deploy] uploading assets to CDN…"],
+  ["t-ok",  "[deploy] ✓ deployed to production"],
+  ["t-dim", "[git] writing objects: 100% ({}/{})"],
+  ["t-ok",  "[git] ✓ main → origin/main"],
+  ["t-info","[db] applying migration 0042_add_charts"],
+  ["t-ok",  "[db] ✓ migrations complete"],
+  ["t-dim", "[cache] warming edge cache…"],
+  ["t-ok",  "[cache] ✓ 128 keys primed"],
+];
+function stamp() {
+  const d = new Date();
+  return `<span class="t-dim">${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}</span> `;
+}
+function termLine(html) {
+  const div = document.createElement("div");
+  div.innerHTML = stamp() + html;
+  term.appendChild(div);
+  while (term.children.length > 19) term.removeChild(term.firstChild);
+}
+function termBurst(n) {
+  for (let i = 0; i < n; i++) {
+    if (chance(0.18)) {
+      termLine(`<span class="t-cmd">$ ${pick(CMDS)}</span>`);
+    } else {
+      const [cls, tpl] = pick(LOGS);
+      termLine(`<span class="${cls}">${tpl.replace("{}", rnd(2, 480)).replace("{}", rnd(0, 9)).replace("{}", rnd(12, 96)).replace("{}", rnd(12, 96))}</span>`);
+    }
+  }
+}
+
+/* ================= dashboard ================= */
+const KPIS = [
+  { label: "Revenue", value: 84213, fmt: v => "$" + v.toLocaleString(), color: "#5be49b", step: [4, 160] },
+  { label: "Active Users", value: 12847, fmt: v => v.toLocaleString(), color: "#7fd4ff", step: [1, 40] },
+  { label: "Uptime", value: 9997, fmt: v => (v / 100).toFixed(2) + "%", color: "#ffd166", step: [0, 2] },
+];
+const kpisEl = $("#kpis");
+KPIS.forEach((k, i) => {
+  const d = document.createElement("div");
+  d.className = "kpi";
+  d.innerHTML = `<div class="label">${k.label}</div>
+    <div class="value" id="kpi${i}" style="color:${k.color}">${k.fmt(k.value)}</div>
+    <div class="delta">▲ ${(Math.random() * 4 + 0.4).toFixed(1)}% this week</div>`;
+  kpisEl.appendChild(d);
+});
+function bumpKpis() {
+  KPIS.forEach((k, i) => {
+    k.value += rnd(k.step[0], k.step[1]);
+    if (k.label === "Uptime") k.value = Math.min(k.value, 10000);
+    $("#kpi" + i).textContent = k.fmt(k.value);
+  });
+}
+
+// bar chart
+const chart = $("#chart"), ctx2d = chart.getContext("2d");
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+let bars = DAYS.map(() => rnd(20, 90));
+let barTargets = bars.slice();
+function shuffleBars() { barTargets = DAYS.map(() => rnd(15, 100)); }
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = chart.clientWidth, h = chart.clientHeight;
+  if (chart.width !== w * dpr) { chart.width = w * dpr; chart.height = h * dpr; }
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx2d.clearRect(0, 0, w, h);
+  const n = bars.length, gap = 14;
+  const bw = (w - gap * (n + 1)) / n;
+  const colors = ["#7fd4ff", "#5be49b", "#ffd166", "#c792ea", "#ff9e64", "#89ddff", "#f78c6c"];
+  for (let i = 0; i < n; i++) {
+    bars[i] += (barTargets[i] - bars[i]) * 0.12;
+    const bh = (bars[i] / 100) * (h - 34);
+    const x = gap + i * (bw + gap), y = h - 22 - bh;
+    ctx2d.fillStyle = colors[i];
+    ctx2d.beginPath();
+    ctx2d.roundRect(x, y, bw, bh, [6, 6, 0, 0]);
+    ctx2d.fill();
+    ctx2d.fillStyle = "#7d93a8";
+    ctx2d.font = "11px monospace";
+    ctx2d.textAlign = "center";
+    ctx2d.fillText(DAYS[i], x + bw / 2, h - 6);
+    ctx2d.fillStyle = "#d6e2ee";
+    ctx2d.fillText(Math.round(bars[i]), x + bw / 2, y - 5);
+  }
+  requestAnimationFrame(drawChart);
+}
+requestAnimationFrame(drawChart);
+
+// progress bars
+const PBARS = [
+  { name: "Sprint tasks", v: 34, color: "#7fd4ff" },
+  { name: "Deploy", v: 12, color: "#5be49b" },
+  { name: "Report export", v: 68, color: "#ffd166" },
+];
+const pbarsEl = $("#pbars");
+PBARS.forEach((p, i) => {
+  const row = document.createElement("div");
+  row.className = "pbar-row";
+  row.innerHTML = `<span class="pname">${p.name}</span>
+    <div class="pbar"><div id="pb${i}" style="background:${p.color}"></div></div>
+    <span class="pct" id="pbp${i}">0%</span>`;
+  pbarsEl.appendChild(row);
+});
+function bumpPbars() {
+  PBARS.forEach((p, i) => {
+    p.v += rnd(1, 6);
+    if (p.v >= 100) {
+      p.v = 0;
+      toast("✅ " + p.name + " complete", pick(["Nice work, everything looks great.", "The team has been notified.", "Results saved to the shared drive."]));
+    }
+    $("#pb" + i).style.width = p.v + "%";
+    $("#pbp" + i).textContent = p.v + "%";
+  });
+}
+
+/* ================= chat ================= */
+const PEOPLE = [
+  { name: "Maya", color: "#ffd166" }, { name: "Leo", color: "#5be49b" },
+  { name: "Priya", color: "#c792ea" }, { name: "Tom", color: "#7fd4ff" },
+  { name: "Sofia", color: "#ff9e64" },
+];
+const CHAT = [
+  "Great job on the presentation! 🎉",
+  "The client loved the new dashboard",
+  "Can you review my PR when you get a sec?",
+  "Standup in 5 minutes!",
+  "Deploy went perfectly, zero errors 🚀",
+  "Just pushed the fix, tests are green",
+  "Coffee break? ☕",
+  "The numbers for this week look amazing",
+  "Thanks for sorting out the report!",
+  "New designs are in Figma, check them out",
+  "Lunch at 12:30, don't be late 🍕",
+  "Boss says great work everyone 👏",
+];
+const chatEl = $("#chat");
+function addChat() {
+  const p = pick(PEOPLE);
+  const d = new Date();
+  const when = String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+  const div = document.createElement("div");
+  div.className = "msg";
+  div.innerHTML = `<div class="avatar" style="background:${p.color}">${p.name[0]}</div>
+    <div><span class="who" style="color:${p.color}">${p.name}</span><span class="when">${when}</span>
+    <div class="text">${pick(CHAT)}</div></div>`;
+  chatEl.appendChild(div);
+  while (chatEl.children.length > 9) chatEl.removeChild(chatEl.firstChild);
+}
+addChat(); addChat(); addChat();
+
+/* ================= emails / toasts ================= */
+const SUBJECTS = ["Q3 results approved ✔", "Re: project timeline", "Your report is ready",
+  "Meeting moved to 2pm", "Invoice paid", "New comment on your document", "Server alert resolved"];
+function toast(title, body) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `<div class="tt">${title}</div><div class="tb">${body}</div>`;
+  $("#toasts").appendChild(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 450); }, 3200);
+  while ($("#toasts").children.length > 4) $("#toasts").firstChild.remove();
+}
+let mailCount = 3;
+function newMail() {
+  mailCount++;
+  $("#mailbadge").textContent = mailCount;
+  toast("📨 New email", pick(SUBJECTS));
+}
+
+/* ================= project switcher ================= */
+const PROJECTS = ["Project Phoenix — sprint board", "Q3 Sales Report — analysis", "Website Redesign — staging",
+  "Customer Portal — backend", "Marketing Dashboard — live data"];
+function switchProject() {
+  const el = $("#project");
+  el.textContent = pick(PROJECTS);
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 700);
+}
+
+/* ================= window pulse ================= */
+function flashWindow(sel) {
+  const w = $(sel);
+  w.classList.add("pulse");
+  setTimeout(() => w.classList.remove("pulse"), 350);
+}
+
+/* ================= input: the fun part ================= */
+function workBurst(big) {
+  typeChars(rnd(3, big ? 14 : 9));
+  termBurst(chance(0.6) ? rnd(1, 2) : 0);
+  if (chance(0.35)) shuffleBars();
+  if (chance(0.5)) bumpKpis();
+  if (chance(0.4)) bumpPbars();
+  if (chance(0.09)) addChat();
+  if (chance(0.05)) newMail();
+  if (chance(0.03)) switchProject();
+  if (chance(0.06)) toast(pick(["✅ Tests passed", "🚀 Deploy complete", "💾 Changes saved", "📦 Build finished"]),
+    pick(["All systems running smoothly.", "Good job!", "Everything is up to date."]));
+  flashWindow(pick(["#w-editor", "#w-term", "#w-dash", "#w-chat"]));
+}
+
+document.addEventListener("keydown", e => {
+  e.preventDefault();
+  if (e.repeat) return;
+  click();
+  workBurst(true);
+});
+document.addEventListener("mousedown", () => {
+  click();
+  workBurst(false);
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+});
+
+// gentle idle activity so the screen is always alive
+setInterval(() => { if (chance(0.7)) workBurst(false); }, 1400);
+
+// seed some content so the screen looks busy right away
+for (let i = 0; i < 9; i++) typeChars(40);
+termBurst(7);
+bumpPbars(); bumpPbars(); bumpPbars();
+</script>
+</body>
+</html>
