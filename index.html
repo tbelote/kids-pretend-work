@@ -534,11 +534,17 @@ function workBurst(big) {
 }
 
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape") return;
+  if ((e.metaKey || e.ctrlKey) && (e.key === "q" || e.key === "Q")) return;
   e.preventDefault();
   if (e.repeat) return;
   click();
   workBurst(true);
 });
+
+if (window.desktop) {
+  document.querySelectorAll(".dot").forEach((dot) => dot.remove());
+}
 document.addEventListener("mousedown", () => {
   click();
   workBurst(false);

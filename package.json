@@ -1,0 +1,79 @@
+{
+  "name": "kids-pretend-work",
+  "productName": "WorkHub Pro",
+  "version": "1.0.0",
+  "description": "A pretend office for kids. Click the icon, then type or click and the screen looks busy.",
+  "desktopName": "workhub-pro.desktop",
+  "main": "electron/main.js",
+  "author": "Tom Belote",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux --x64",
+    "dist:win": "electron-builder --win --x64",
+    "dist:all": "electron-builder --mac && electron-builder --linux --x64 && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.tbelote.workhubpro",
+    "productName": "WorkHub Pro",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "index.html",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "build/icon.png", "to": "icon.png" }
+    ],
+    "artifactName": "WorkHub-Pro-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "category": "Education",
+      "icon": "build/icon.png",
+      "executableName": "workhub-pro",
+      "syncDesktopName": true,
+      "synopsis": "A pretend office for kids",
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "executableName": "WorkHubPro",
+      "target": [
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}
